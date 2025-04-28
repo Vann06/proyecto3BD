@@ -56,6 +56,11 @@ CREATE TABLE DetallesPedidos (
   FOREIGN KEY (id_producto) REFERENCES Productos(id)
 );
 
+CREATE TABLE Roles (
+  id SERIAL PRIMARY KEY,
+  nombre VARCHAR(100) NOT NULL
+);
+
 CREATE TABLE Empleados (
   id SERIAL PRIMARY KEY,
   nombre VARCHAR(100) NOT NULL,
@@ -63,7 +68,7 @@ CREATE TABLE Empleados (
   FOREIGN KEY (id_rol) REFERENCES Roles(id)
 );
 
-CREATE TABLE Roles (
+CREATE TABLE MetodoPagos (
   id SERIAL PRIMARY KEY,
   nombre VARCHAR(100) NOT NULL
 );
@@ -78,10 +83,6 @@ CREATE TABLE Pagos (
   FOREIGN KEY (id_metodo_pago) REFERENCES MetodoPagos(id)
 );
 
-CREATE TABLE MetodoPagos (
-  id SERIAL PRIMARY KEY,
-  nombre VARCHAR(100) NOT NULL
-);
 
 CREATE TABLE EmpleadoPedidos (
   id SERIAL PRIMARY KEY,
