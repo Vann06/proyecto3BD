@@ -1,0 +1,189 @@
+import pandas as pd
+from sqlalchemy import text
+
+def reporte_inventario(categoria=None, stock_min=None, stock_max=None, precio_min=None, precio_max=None, nombre_producto=None):
+    query = """
+    SELECT p.nombre AS producto, 
+           c.nombre AS categoria, 
+           p.cantidad_disponible AS stock_actual, 
+           p.precio AS precio_unitario
+    FROM Productos p
+    JOIN Categorias c ON p.id_categoria = c.id
+    WHERE 1=1
+    """
+    
+    # Filtros dinámicos
+    if categoria:
+        query += f" AND c.nombre = :categoria"
+    if stock_min is not None:
+        query += f" AND p.cantidad_disponible >= :stock_min"
+    if stock_max is not None:
+        query += f" AND p.cantidad_disponible <= :stock_max"
+    if precio_min is not None:
+        query += f" AND p.precio >= :precio_min"
+    if precio_max is not None:
+        query += f" AND p.precio <= :precio_max"
+    if nombre_producto:
+        query += f" AND p.nombre ILIKE :nombre_producto"
+    
+    query += " ORDER BY p.nombre"
+    
+    # Ejecutar la consulta
+    result = session.execute(text(query), {'categoria': categoria, 'stock_min': stock_min, 'stock_max': stock_max, 
+                                            'precio_min': precio_min, 'precio_max': precio_max, 'nombre_producto': f"%{nombre_producto}%"})
+    
+    # Convertir el resultado en un DataFrame
+    df = pd.DataFrame(result.fetchall(), columns=['Producto', 'Categoría', 'Stock Actual', 'Precio Unitario'])
+    
+    return df
+
+
+def reporte_pedidos_cliente(fecha_inicio=None, fecha_fin=None, estado=None, monto_min=None, monto_max=None, nombre_cliente=None):
+    query = """
+    SELECT p.id AS id_pedido, 
+           p.fecha AS fecha_pedido, 
+           c.nombre || ' ' || c.apellido AS cliente, 
+           p.estado, 
+           p.total AS total_pedido
+    FROM Pedidos p
+    JOIN Clientes c ON p.id_cliente = c.id
+    WHERE 1=1
+    """
+    
+    # Filtros dinámicos
+    if fecha_inicio:
+        query += f" AND p.fecha >= :fecha_inicio"
+    if fecha_fin:
+        query += f" AND p.fecha <= :fecha_fin"
+    if estado:
+        query += f" AND p.estado = :estado"
+    if monto_min is not None:
+        query += f" AND p.total >= :monto_min"
+    if monto_max is not None:
+        query += f" AND p.total <= :monto_max"
+    if nombre_cliente:
+        query += f" AND (c.nombre ILIKE :nombre_cliente OR c.apellido ILIKE :nombre_cliente)"
+    
+    query += " ORDER BY p.fecha"
+    
+    # Ejecutar la consulta
+    result = session.execute(text(query), {'fecha_inicio': fecha_inicio, 'fecha_fin': fecha_fin, 
+                                            'estado': estado, 'monto_min': monto_min, 'monto_max': monto_max,
+                                            'nombre_cliente': f"%{nombre_cliente}%"})
+    
+    # Convertir el resultado en un DataFrame
+    df = pd.DataFrame(result.fetchall(), columns=['ID Pedido', 'Fecha Pedido', 'Cliente', 'Estado', 'Total Pedido'])
+    
+    return df
+
+
+def reporte_productos_vendidos(fecha_inicio=None, fecha_fin=None, categoria=None, nombre_producto=None):
+    query = """
+    SELECT p.nombre AS producto, 
+           SUM(dp.cantidad) AS cantidad_vendida, 
+           SUM(dp.subtotal) AS total_vendido
+    FROM DetallesPedidos dp
+    JOIN Productos p ON dp.id_producto = p.id
+    JOIN Pedidos pe ON dp.id_pedido = pe.id
+    WHERE 1=1
+    """
+    
+    # Filtros dinámicos
+    if fecha_inicio:
+        query += f" AND pe.fecha >= :fecha_inicio"
+    if fecha_fin:
+        query += f" AND pe.fecha <= :fecha_fin"
+    if categoria:
+        query += f" AND p.id_categoria = (SELECT id FROM Categorias WHERE nombre = :categoria)"
+    if nombre_producto:
+        query += f" AND p.nombre ILIKE :nombre_producto"
+    
+    query += " GROUP BY p.id ORDER BY total_vendido DESC"
+    
+    # Ejecutar la consulta
+    result = session.execute(text(query), {'fecha_inicio': fecha_inicio, 'fecha_fin': fecha_fin, 'categoria': categoria, 
+                                            'nombre_producto': f"%{nombre_producto}%"})
+    
+    # Convertir el resultado en un DataFrame
+    df = pd.DataFrame(result.fetchall(), columns=['Producto', 'Cantidad Vendida', 'Total Vendido'])
+    
+    return df
+
+
+def reporte_pagos(fecha_inicio=None, fecha_fin=None, metodo_pago=None, monto_min=None, monto_max=None):
+    query = """
+    SELECT pa.id AS id_pago, 
+           pe.id AS id_pedido, 
+           pa.monto AS monto_pago, 
+           pa.fecha_pago, 
+           mp.nombre AS metodo_pago
+    FROM Pagos pa
+    JOIN Pedidos pe ON pa.id_pedido = pe.id
+    JOIN MetodoPagos mp ON pa.id_metodo_pago = mp.id
+    WHERE 1=1
+    """
+    
+    # Filtros dinámicos
+    if fecha_inicio:
+        query += f" AND pa.fecha_pago >= :fecha_inicio"
+    if fecha_fin:
+        query += f" AND pa.fecha_pago <= :fecha_fin"
+    if metodo_pago:
+        query += f" AND mp.nombre = :metodo_pago"
+    if monto_min is not None:
+        query += f" AND pa.monto >= :monto_min"
+    if monto_max is not None:
+        query += f" AND pa.monto <= :monto_max"
+    
+    query += " ORDER BY pa.fecha_pago"
+    
+    # Ejecutar la consulta
+    result = session.execute(text(query), {'fecha_inicio': fecha_inicio, 'fecha_fin': fecha_fin, 
+                                            'metodo_pago': metodo_pago, 'monto_min': monto_min, 'monto_max': monto_max})
+    
+    # Convertir el resultado en un DataFrame
+    df = pd.DataFrame(result.fetchall(), columns=['ID Pago', 'ID Pedido', 'Monto', 'Fecha de Pago', 'Método de Pago'])
+    
+    return df
+
+
+def reporte_pedidos_empleado(fecha_inicio=None, fecha_fin=None, empleado=None, estado=None, monto_min=None, monto_max=None):
+    query = """
+    SELECT p.id AS id_pedido, 
+           c.nombre || ' ' || c.apellido AS cliente, 
+           p.fecha AS fecha_pedido, 
+           e.nombre AS empleado, 
+           p.total AS total_pedido, 
+           p.estado
+    FROM Pedidos p
+    JOIN Clientes c ON p.id_cliente = c.id
+    JOIN EmpleadoPedidos ep ON p.id = ep.id_pedido
+    JOIN Empleados e ON ep.id_empleado = e.id
+    WHERE 1=1
+    """
+    
+    # Filtros dinámicos
+    if fecha_inicio:
+        query += f" AND p.fecha >= :fecha_inicio"
+    if fecha_fin:
+        query += f" AND p.fecha <= :fecha_fin"
+    if empleado:
+        query += f" AND e.nombre ILIKE :empleado"
+    if estado:
+        query += f" AND p.estado = :estado"
+    if monto_min is not None:
+        query += f" AND p.total >= :monto_min"
+    if monto_max is not None:
+        query += f" AND p.total <= :monto_max"
+    
+    query += " ORDER BY p.fecha"
+    
+    # Ejecutar la consulta
+    result = session.execute(text(query), {'fecha_inicio': fecha_inicio, 'fecha_fin': fecha_fin, 
+                                            'empleado': f"%{empleado}%", 'estado': estado, 
+                                            'monto_min': monto_min, 'monto_max': monto_max})
+    
+    # Convertir el resultado en un DataFrame
+    df = pd.DataFrame(result.fetchall(), columns=['ID Pedido', 'Cliente', 'Fecha Pedido', 'Empleado', 'Total Pedido', 'Estado'])
+    
+    return df

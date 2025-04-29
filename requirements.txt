@@ -1,3 +1,4 @@
 streamlit
-psycopg2-binary # For connecting to PostgreSQL
-pandas # For data manipulation and analysis
+psycopg2-binary
+pandas
+sqlalchemy
