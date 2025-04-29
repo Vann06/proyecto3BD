@@ -91,3 +91,69 @@ CREATE TABLE EmpleadoPedidos (
   FOREIGN KEY (id_empleado) REFERENCES Empleados(id),
   FOREIGN KEY (id_pedido) REFERENCES Pedidos(id)
 );
+
+
+
+-- Triggers funcionales 
+
+
+-- trigger para manejar las sumas de un pedido 
+CREATE OR REPLACE FUNCTION actualizar_total_pedido()
+RETURNS TRIGGER AS $$
+BEGIN
+  UPDATE Pedidos
+  SET total = (
+    SELECT SUM(subtotal)
+    FROM DetallesPedidos
+    WHERE id_pedido = NEW.id_pedido
+  )
+  WHERE id = NEW.id_pedido;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_actualizar_total
+AFTER INSERT OR UPDATE OR DELETE ON DetallesPedidos
+FOR EACH ROW EXECUTE FUNCTION actualizar_total_pedido();
+
+
+-- trigger para actualizar el stock actual 
+CREAtE OR REPLACE FUNCTION actualizar_stock_productos()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.estado = 'Pagado' AND OLD.estado <> 'Pagado' THEN
+    UPDATE Productos
+    SET cantidad_disponible = cantidad_disponible - dp.cantidad
+    FROM DetallesPedidos dp
+    WHERE dp.id_pedido = NEW.id AND Productos.id = dp.id_producto;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_actualizar_stock
+AFTER UPDATE ON Pedidos
+FOR EACH ROW EXECUTE FUNCTION actualizar_stock_productos();
+
+-- trigger para verificar que existe suficiente stock disponible
+
+CREATE OR REPLACE FUNCTION verificar_stock_productos()
+RETURNS TRIGGER AS $$
+DECLARE
+  stock_actual INT;
+BEGIN
+  SELECT cantidad_disponible INTO stock_actual
+  FROM Productos
+  WHERE id = NEW.id_producto;
+  
+  IF NEW.cantidad > stock_actual THEN
+    RAISE EXCEPTION 'Stock insuficiente para el producto %', NEW.id_producto;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_verificar_stock
+BEFORE INSERT ON DetallesPedidos
+FOR EACH ROW EXECUTE FUNCTION verificar_stock_productos();
