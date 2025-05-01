@@ -1,51 +1,85 @@
 import streamlit as st
-import psycopg2
-import os
+import pandas as pd
+from sqlalchemy.exc import OperationalError
+from reports.reporte_inventario import inventario_report
 
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_NAME", "projectdb")
-DB_USER = os.getenv("DB_USER", "user")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "password")
-
-def get_db_connection():
-    """Establishes a connection to the PostgreSQL database."""
-    try:
-        conn = psycopg2.connect(
-            host=DB_HOST,
-            port=DB_PORT,
-            dbname=DB_NAME,
-            user=DB_USER,
-            password=DB_PASSWORD
-        )
-        return conn
-    except psycopg2.OperationalError as e:
-        st.error(f"Error connecting to database: {e}")
-        st.error(f"Connection details used: Host={DB_HOST}, Port={DB_PORT}, DB={DB_NAME}, User={DB_USER}")
-        st.info("Ensure the database container is running (`docker-compose up -d db`).")
-        st.info("Verify the environment variables in `docker-compose.yml` match the database settings.")
-        return None
-    except Exception as e:
-        st.error(f"An unexpected error occurred during database connection: {e}")
-        return None
-
+from core.config import DB_HOST, DB_NAME
+from core.db import engine, inspect
 
 st.set_page_config(layout="wide")
-st.title("Database Connection Test")
+st.title("Sistema de Reportes")
 
-st.write("Attempting to connect to the database...")
+if 'reporte_actual' not in st.session_state:
+    st.session_state['reporte_actual'] = None
 
-conn = get_db_connection()
+reportes = {
+    "inventario": "Inventario de Productos",
 
-if conn:
-    st.success("Successfully connected to the database!")
-    st.write(f"Connected to: {DB_HOST}:{DB_PORT}/{DB_NAME} as {DB_USER}")
-    conn.close()
-    st.info("Database connection closed.")
-else:
-    st.warning("Database connection failed. Please check the errors above.")
+}
 
-st.markdown("---")
-st.header("How to Run")
-st.code("docker-compose up --build", language="bash")
-st.write("Then access the application in your browser, usually at http://localhost:8502")
+
+def set_reporte(nombre_reporte):
+    st.session_state['reporte_actual'] = nombre_reporte
+
+
+# Verificar conexión y mostrar barra lateral
+try:
+    ins = inspect(engine)
+    table_names = ins.get_table_names()
+    
+    st.sidebar.success(f"Conectado a: {DB_NAME}@{DB_HOST}")
+    st.sidebar.header("Reportes Disponibles")
+    
+    if table_names:
+        for key, nombre in reportes.items():
+            st.sidebar.button(nombre, key=f"btn_{key}", on_click=set_reporte, args=(key,))
+    else:
+        st.sidebar.error("No hay tablas disponibles en la base de datos.")
+        st.warning("No se pueden generar reportes sin tablas en la base de datos.")
+
+except OperationalError as e:
+    st.sidebar.error("Error de conexión a la base de datos")
+    st.info(f"Verifica la conexión: {e}")
+except Exception as e:
+    st.sidebar.error(f"Error: {e}")
+
+
+if st.session_state['reporte_actual'] == "inventario":
+    st.header("Reporte de Inventario de Productos")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        nombre_producto = st.text_input("Filtrar por nombre de producto:", key="nombre_prod")
+        categoria = st.text_input("Filtrar por categoría:", key="cat")
+    
+    with col2:
+        stock_min = st.number_input("Stock mínimo:", min_value=0, value=0, key="stock_min")
+        stock_max = st.number_input("Stock máximo:", min_value=0, value=1000, key="stock_max")
+    
+    with col3:
+        precio_min = st.number_input("Precio mínimo:", min_value=0.0, value=0.0, step=0.01, key="precio_min")
+        precio_max = st.number_input("Precio máximo:", min_value=0.0, value=1000.0, step=0.01, key="precio_max")
+    
+    if st.button("Generar Reporte", key="gen_inventario"):
+        try:
+            df = inventario_report(
+                nombre_producto=nombre_producto if nombre_producto else None,
+                categoria=categoria if categoria else None,
+                stock_min=stock_min,
+                stock_max=stock_max,
+                precio_min=precio_min,
+                precio_max=precio_max
+            )
+            
+            if not df.empty:
+                st.subheader("Resultados")
+                st.dataframe(df)
+            else:
+                st.info("No se encontraron productos con los filtros especificados.")
+        except Exception as e:
+            st.error(f"Error al generar el reporte: {e}")
+
+elif st.session_state['reporte_actual'] is None:
+    st.header("Bienvenido al Sistema de Reportes")
+    st.info("Selecciona un reporte de la barra lateral para comenzar.")
