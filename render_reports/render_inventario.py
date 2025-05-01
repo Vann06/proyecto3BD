@@ -1,8 +1,13 @@
 
 import streamlit as st
-from reports.reporte_inventario import inventario_report
 from sqlalchemy import select
 from core.db import engine, reflect_single_table
+import pandas as pd
+import plotly.express as px
+from io import BytesIO
+from core.utils import exportar_a_pdf
+from reports.reporte_inventario import inventario_report
+from core.utils import obtener_categorias_disponibles
 
 def mostrar_reporte_inventario():
     st.header(" Reporte de Inventario de Productos")
@@ -37,20 +42,18 @@ def mostrar_reporte_inventario():
             if not df.empty:
                 st.success(f"Se encontraron {len(df)} resultados")
                 st.dataframe(df, use_container_width=True)
+                #EXPORT CSV
+                st.download_button("Descargar CSV", df.to_csv(index=False).encode(), "inventario.csv", "text/csv")
+                # EXPORT PDF
+                pdf_data = exportar_a_pdf(df, titulo="Reporte de Inventario")
+                st.download_button("Descargar PDF", data=pdf_data, file_name="pedidos_cliente.pdf", mime="application/pdf")
+
+                st.subheader("Gráfica de Inventario")
+                fig = px.bar(df, x="productos", y="cantidad", title="Cantidad disponible por producto")
+                st.plotly_chart(fig, use_container_width=True)
+
             else:
                 st.warning("No se encontraron productos con los filtros especificados.")
         except Exception as e:
             st.error(f" Error al generar el reporte: {e}")
 
-
-def obtener_categorias_disponibles():
-    categorias_table = reflect_single_table("categorias")
-    try:
-        with engine.connect() as conn:
-            query = select(categorias_table.c.nombre)
-            result = conn.execute(query)
-            categorias = [row[0] for row in result.fetchall()]
-            return categorias
-    except Exception as e:
-        print(f"Error cargando categorías: {e}")
-        return []

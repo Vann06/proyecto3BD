@@ -3,7 +3,7 @@ import pandas as pd
 from sqlalchemy.exc import OperationalError
 from render_reports.render_inventario import mostrar_reporte_inventario
 from render_reports.render_pedidos_cliente import mostrar_reporte_pedidos
-
+from render_reports.render_top_productos import mostrar_reporte_productos
 from core.config import DB_HOST, DB_NAME
 from core.db import engine, inspect
 
@@ -16,6 +16,7 @@ if 'reporte_actual' not in st.session_state:
 reportes = {
     "inventario": "Inventario de Productos",
     "pedidos" : "Pedidos con Clientes",
+    "top_productos": "Productos más Vendidos",
 
 }
 
@@ -50,6 +51,10 @@ if st.session_state['reporte_actual'] == "inventario":
 
 elif st.session_state['reporte_actual'] == "pedidos":
     mostrar_reporte_pedidos()
+
+elif st.session_state["reporte_actual"] == "top_productos":
+    mostrar_reporte_productos()
+
     
 
 elif st.session_state['reporte_actual'] is None:
