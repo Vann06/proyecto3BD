@@ -4,6 +4,8 @@ from sqlalchemy.exc import OperationalError
 from render_reports.render_inventario import mostrar_reporte_inventario
 from render_reports.render_pedidos_cliente import mostrar_reporte_pedidos
 from render_reports.render_top_productos import mostrar_reporte_productos
+from render_reports.render_clientes_frecuentes import mostrar_reporte_clientes
+from render_reports.render_pagos import mostrar_reporte_pagos
 from core.config import DB_HOST, DB_NAME
 from core.db import engine, inspect
 
@@ -17,7 +19,8 @@ reportes = {
     "inventario": "Inventario de Productos",
     "pedidos" : "Pedidos con Clientes",
     "top_productos": "Productos más Vendidos",
-
+    "pagos" : "Pagos realizados por los clientes",
+    "clientes_frecuentes" : "Clientes que compran con más frecuencia"
 }
 
 
@@ -54,6 +57,12 @@ elif st.session_state['reporte_actual'] == "pedidos":
 
 elif st.session_state["reporte_actual"] == "top_productos":
     mostrar_reporte_productos()
+
+elif st.session_state["reporte_actual"] == "pagos":
+    mostrar_reporte_pagos()
+
+elif st.session_state["reporte_actual"] == "clientes_frecuentes":
+    mostrar_reporte_clientes()
 
     
 
