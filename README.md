@@ -49,12 +49,16 @@ proyecto/
 ├── reports/                    # Consultas SQL por reporte
 │   ├── reporte_inventario.py
 │   ├── reporte_pedidos_cliente.py
-│   └── reporte_top_productos.py
+│   ├── reporte_top_productos.py
+│   ├── reporte_clientes_frecuentes.py
+│   └── reporte_pagos.py
 
 ├── render_reports/             # Interfaz de cada reporte (filtros + tabla + gráficas)
 │   ├── render_inventario.py
 │   ├── render_pedidos.py
-│   └── render_top_productos.py
+│   ├── render_top_productos.py
+│   ├── render_clientes_frecuentes.py
+│   └── render_pagos.py
 
 ```
 
