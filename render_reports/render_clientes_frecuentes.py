@@ -1,9 +1,5 @@
 import streamlit as st
-from sqlalchemy import select
-from core.db import engine, reflect_single_table
-import pandas as pd
 import plotly.express as px
-from io import BytesIO
 from core.utils import exportar_a_pdf
 from core.utils import obtener_categorias_disponibles
 from reports.reporte_clientes_frecuentes import clientes_frecuentes_report
@@ -23,6 +19,8 @@ def mostrar_reporte_clientes():
         pedidos_minimos = st.number_input("Cantidad mínima de pedidos", min_value=1, value=1, step=1)
     with col3:
         categoria = st.selectbox("Categoría comprada", [""] + categorias, key="categoria_cli")
+        ultima_compra = st.number_input("Compras en ultimos x dias", min_value = 0, value = 0,
+                                        help = "0 sin filtro, 30 = ultimos treinta dias", step = 1)
 
     if st.button("Generar Reporte", key="gen_clientes"):
         df = clientes_frecuentes_report(
@@ -30,7 +28,8 @@ def mostrar_reporte_clientes():
             fecha_fin=fecha_fin,
             gasto_minimo=gasto_minimo,
             pedidos_minimos=pedidos_minimos,
-            categoria_producto=categoria or None
+            categoria_producto=categoria or None,
+            ultima_compra= ultima_compra if ultima_compra > 0 else None
         )
 
         if not df.empty:

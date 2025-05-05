@@ -28,7 +28,6 @@ def set_reporte(nombre_reporte):
     st.session_state['reporte_actual'] = nombre_reporte
 
 
-# Verificar conexión y mostrar barra lateral
 try:
     ins = inspect(engine)
     table_names = ins.get_table_names()

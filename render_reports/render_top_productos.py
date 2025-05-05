@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from io import BytesIO
 from core.utils import exportar_a_pdf
 from reports.reporte_top_productos import productos_top_report
 from core.utils import obtener_categorias_disponibles

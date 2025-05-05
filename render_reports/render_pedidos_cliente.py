@@ -1,7 +1,5 @@
 import streamlit as st
-import pandas as pd
 import plotly.express as px
-from io import BytesIO
 from core.utils import exportar_a_pdf
 from reports.reporte_pedidos_cliente import pedidos_cliente_report
 
